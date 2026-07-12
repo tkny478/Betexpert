@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BetIQ · Pressure Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: #080a0f; padding: 20px;
+    font-family: ui-sans-serif, system-ui, sans-serif; color: #e8ecf2;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+  .oswald { font-family: 'Oswald', sans-serif; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #232838; border-radius: 3px; }
+  select, input[type=number] {
+    background: #12161f; border: 1px solid #232838; color: #e8ecf2; border-radius: 6px;
+    padding: 6px 8px; font-family: ui-monospace, monospace; font-size: 12px;
+  }
+  input[type=range] { accent-color: #6fd67a; width: 100%; }
+  .container { max-width: 480px; margin: 0 auto; }
+  .header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .header-title { font-size: 20px; font-weight: 700; }
+  .header-sub { font-size: 11px; color: #5f6779; }
+  .tabs { display: flex; gap: 8px; background: #0d1017; border: 1px solid #1c212c; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+  .tab-btn {
+    flex: 1; padding: 9px 0; border-radius: 7px; border: none; cursor: pointer;
+    background: transparent; color: #8b93a1; font-family: 'Oswald', sans-serif; font-weight: 600;
+    font-size: 12px; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .tab-btn.active { background: #6fd67a; color: #0a0d13; }
+  .card { background: #0d1017; border: 1px solid #1c212c; border-radius: 14px; padding: 16px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* selector */
+  .fixture-row {
+    display: flex; justify-content: space-between; align-items: center; width: 100%;
+    background: #12161f; border: 1px solid #232838; border-radius: 10px; padding: 12px 14px;
+    cursor: pointer; text-align: left; margin-bottom: 8px; transition: border-color 0.2s, background 0.2s;
+  }
+  .fixture-row.checked { background: #6fd67a15; border-color: #6fd67a66; }
+  .fixture-row.disabled { opacity: 0.4; cursor: not-allowed; }
+  .fixture-name { font-family: 'Oswald', sans-serif; font-size: 14px; }
+  .fixture-meta { font-size: 10px; color: #5f6779; font-family: ui-monospace, monospace; margin-top: 2px; }
+  .checkbox { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid #3d4453; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .checkbox.checked { background: #6fd67a; border-color: #6fd67a; color: #0a0d13; font-weight: 900; font-size: 13px; }
+  .start-btn {
+    width: 100%; background: #232838; color: #5f6779; border: none; border-radius: 10px;
+    padding: 13px 0; font-weight: 700; font-family: 'Oswald', sans-serif; letter-spacing: 0.5px;
+    cursor: default; font-size: 14px; margin-top: 10px;
+  }
+  .start-btn.enabled { background: #6fd67a; color: #0a0d13; cursor: pointer; }
+
+  /* live dashboard */
+  .back-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; color: #8b93a1; cursor: pointer; font-size: 12px; font-family: ui-monospace, monospace; margin-bottom: 14px; }
+  .fixture-card { margin-bottom: 14px; }
+  .fixture-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #6fd67a; box-shadow: 0 0 6px #6fd67a; display: inline-block; margin-right: 6px; }
+  .live-label { font-family: ui-monospace, monospace; font-size: 11px; color: #6fd67a; letter-spacing: 1px; }
+  .comp-label { font-size: 10px; color: #5f6779; font-family: ui-monospace, monospace; }
+  .teams-row { display: flex; gap: 10px; }
+  .team-card { flex: 1; background: #12161f; border: 1px solid #232838; border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .team-card.alert-goal { border-color: #ff5a3c55; }
+  .team-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .team-name { font-family: 'Oswald', sans-serif; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team-goals { font-family: ui-monospace, monospace; font-size: 22px; font-weight: 700; }
+  .stat-row { display: flex; gap: 12px; font-size: 10px; color: #5f6779; font-family: ui-monospace, monospace; margin-bottom: 10px; }
+  .bar-label { display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 11px; color: #8b93a1; margin-bottom: 4px; }
+  .bar-track { height: 6px; background: #1a1f2a; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+  .bar-fill { height: 100%; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+  .badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-family: ui-monospace, monospace; border: 1px solid; }
+  .badge-goal { background: #ff5a3c22; color: #ff5a3c; border-color: #ff5a3c44; }
+  .badge-corner { background: #ffb02e22; color: #ffb02e; border-color: #ffb02e44; }
+
+  /* alert feed */
+  .alert-feed { height: 260px; display: flex; flex-direction: column; }
+  .alert-feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .alert-feed-title { font-family: 'Oswald', sans-serif; font-size: 13px; }
+  .clear-btn { background: none; border: none; color: #5f6779; cursor: pointer; font-size: 11px; font-family: ui-monospace, monospace; }
+  .alert-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .alert-empty { color: #3d4453; font-size: 12px; font-family: ui-monospace, monospace; padding-top: 20px; text-align: center; }
+  .alert-item { border-radius: 8px; padding: 8px 10px; font-size: 12px; border: 1px solid; }
+  .alert-item.goal { background: #ff5a3c11; border-color: #ff5a3c33; }
+  .alert-item.corner { background: #ffb02e11; border-color: #ffb02e33; }
+  .alert-item-top { display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; margin-bottom: 2px; }
+  .footer-note { font-size: 10.5px; color: #3d4453; font-family: ui-monospace, monospace; line-height: 1.6; text-align: center; margin-top: 16px; }
+
+  /* backtest */
+  .controls-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .control-label { font-size: 10px; color: #5f6779; margin-bottom: 4px; font-family: ui-monospace, monospace; }
+  .run-btn { background: #6fd67a; color: #0a0d13; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; font-family: 'Oswald', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .run-btn:disabled { opacity: 0.6; cursor: default; }
+  .chart-title { font-size: 12px; color: #8b93a1; font-family: ui-monospace, monospace; margin-bottom: 10px; }
+  .stats-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .stat-card { background: #12161f; border: 1px solid #232838; border-radius: 10px; padding: 12px 14px; flex: 1; min-width: 90px; }
+  .stat-card-label { font-size: 10px; color: #5f6779; font-family: ui-monospace, monospace; margin-bottom: 4px; }
+  .stat-card-value { font-size: 22px; font-weight: 700; font-family: 'Oswald', sans-serif; }
+  .info-box { display: flex; gap: 8px; background: #0d1017; border: 1px solid #1c212c; border-radius: 12px; padding: 14px; font-size: 11.5px; color: #8b93a1; line-height: 1.6; margin-top: 16px; }
+  .legend { display: flex; gap: 16px; font-size: 11px; font-family: ui-monospace, monospace; margin-top: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <span style="font-size:20px;">📡</span>
+    <div>
+      <div class="header-title oswald">BETIQ · PRESSURE SUITE</div>
+      <div class="header-sub mono">live signal engine + threshold backtesting</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtnLive" onclick="switchTab('live')">📻 LIVE MONITOR</button>
+    <button class="tab-btn" id="tabBtnBacktest" onclick="switchTab('backtest')">🧪 BACKTEST LAB</button>
+  </div>
+
+  <div id="panelLive" class="panel active"></div>
+  <div id="panelBacktest" class="panel"></div>
+</div>
+
+<script>
+// ============================================================================
+// SHARED SCORING ENGINE
+// ============================================================================
+const GOAL_ALERT_THRESHOLD = 65;
+const CORNER_ALERT_THRESHOLD = 60;
+
+function getStatsInWindow(history, currentMinute, windowSize) {
+  const recent = history.filter(h => currentMinute - h.minute <= windowSize && h.minute <= currentMinute);
+  if (recent.length < 2) return { shotsOnTarget: 0, dangerousAttacks: 0, corners: 0, possession: recent[0]?.possession || 50, goals: 0 };
+  const first = recent[0], last = recent[recent.length - 1];
+  return {
+    shotsOnTarget: last.shotsOnTarget - first.shotsOnTarget,
+    dangerousAttacks: last.dangerousAttacks - first.dangerousAttacks,
+    corners: last.corners - first.corners,
+    possession: last.possession,
+    goals: last.goals - first.goals,
+  };
+}
+
+function getMinutesSince(history, eventType, currentMinute) {
+  const evs = history.filter(h => h.minute <= currentMinute && h.events && h.events.includes(eventType));
+  if (!evs.length) return 999;
+  return currentMinute - evs[evs.length - 1].minute;
+}
+
+function computePressureScores(matchMinute, history, isLosing, goalDiff) {
+  const w10 = getStatsInWindow(history, matchMinute, 10);
+  const w15 = getStatsInWindow(history, matchMinute, 15);
+
+  let goalScore = 0;
+  goalScore += Math.min(w10.shotsOnTarget * 15, 45);
+  goalScore += Math.min((w10.dangerousAttacks / 10) * 8, 25);
+  const gap = w10.shotsOnTarget - w10.goals;
+  goalScore += gap >= 3 ? 15 : gap * 5;
+  if (matchMinute > 75 && isLosing) goalScore *= 1.15;
+  const sinceSOT = getMinutesSince(history, 'shotOnTarget', matchMinute);
+  if (sinceSOT > 12) goalScore *= 0.7;
+  goalScore = Math.max(0, Math.min(Math.round(goalScore), 100));
+
+  let cornerScore = 0;
+  cornerScore += Math.min(w15.corners * 20, 50);
+  const sinceCorner = getMinutesSince(history, 'corner', matchMinute);
+  cornerScore += sinceCorner <= 4 ? 20 : 0;
+  cornerScore += Math.min((w10.dangerousAttacks - w10.possession) * 0.3, 20);
+  if (matchMinute > 70 && isLosing && goalDiff === -1) cornerScore += 15;
+  cornerScore = Math.max(0, Math.min(Math.round(cornerScore), 100));
+
+  return { goalScore, cornerScore };
+}
+
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ============================================================================
+// TAB SWITCHING
+// ============================================================================
+function switchTab(tab) {
+  document.getElementById('panelLive').classList.toggle('active', tab === 'live');
+  document.getElementById('panelBacktest').classList.toggle('active', tab === 'backtest');
+  document.getElementById('tabBtnLive').classList.toggle('active', tab === 'live');
+  document.getElementById('tabBtnBacktest').classList.toggle('active', tab === 'backtest');
+}
+
+// ============================================================================
+// LIVE MONITOR — now backed by real API-Football data via /api/* proxy
+// ============================================================================
+const MAX_MATCHES = 5;
+const POLL_INTERVAL_MS = 45000; // stay well within free-tier rate limits with 5 concurrent matches
+
+let FIXTURE_POOL = []; // populated from /api/live-fixtures
+let poolLoading = false;
+let poolError = null;
+
+let liveState = {
+  phase: 'select', // 'select' | 'live'
+  selectedIds: [],
+  fixtures: [],   // map of id -> { id, home:{name,...,history}, away:{...}, competition, minute }
+  alerts: [],
+  seenAlerts: new Set(),
+  tickTimer: null,
+};
+
+async function fetchFixturePool() {
+  poolLoading = true; poolError = null; renderLive();
+  try {
+    const res = await fetch('/api/live-fixtures');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load live fixtures');
+    FIXTURE_POOL = data.fixtures;
+  } catch (err) {
+    poolError = err.message;
+  } finally {
+    poolLoading = false;
+    renderLive();
+  }
+}
+
+function makeFixtureState(poolEntry) {
+  const mk = (name, goals) => ({
+    name, shotsOnTarget: 0, corners: 0, dangerousAttacks: 0, possession: 50, goals: goals || 0,
+    history: [{ minute: poolEntry.minute || 0, shotsOnTarget: 0, dangerousAttacks: 0, corners: 0, possession: 50, goals: goals || 0, events: [] }]
+  });
+  return {
+    id: poolEntry.id,
+    home: mk(poolEntry.home, poolEntry.homeGoals),
+    away: mk(poolEntry.away, poolEntry.awayGoals),
+    competition: poolEntry.competition,
+    minute: poolEntry.minute || 0
+  };
+}
+
+// Diff the previous cumulative stats against the new poll to detect events
+// (a new corner, a new shot on target, a new goal) for the drought/clustering logic.
+function applyStatsUpdate(team, minute, newStats) {
+  const events = [];
+  if (newStats.shotsOnTarget > team.shotsOnTarget) events.push('shotOnTarget');
+  if (newStats.corners > team.corners) events.push('corner');
+  if (newStats.goals > team.goals) events.push('goal');
+
+  return {
+    name: team.name,
+    shotsOnTarget: newStats.shotsOnTarget,
+    corners: newStats.corners,
+    dangerousAttacks: newStats.dangerousAttacks,
+    possession: newStats.possession,
+    goals: newStats.goals,
+    history: [...team.history.slice(-60), {
+      minute, shotsOnTarget: newStats.shotsOnTarget, dangerousAttacks: newStats.dangerousAttacks,
+      corners: newStats.corners, possession: newStats.possession, goals: newStats.goals, events
+    }]
+  };
+}
+
+function toggleSelect(id) {
+  const i = liveState.selectedIds.indexOf(id);
+  if (i >= 0) liveState.selectedIds.splice(i, 1);
+  else if (liveState.selectedIds.length < MAX_MATCHES) liveState.selectedIds.push(id);
+  renderLive();
+}
+
+function startMonitoring() {
+  const chosen = FIXTURE_POOL.filter(f => liveState.selectedIds.includes(f.id));
+  liveState.fixtures = chosen.map(makeFixtureState);
+  liveState.seenAlerts = new Set();
+  liveState.alerts = [];
+  liveState.phase = 'live';
+  renderLive();
+  if (liveState.tickTimer) clearInterval(liveState.tickTimer);
+  pollLive(); // fire immediately, then on interval
+  liveState.tickTimer = setInterval(pollLive, POLL_INTERVAL_MS);
+}
+
+function backToSelect() {
+  liveState.phase = 'select';
+  if (liveState.tickTimer) clearInterval(liveState.tickTimer);
+  renderLive();
+}
+
+function clearAlerts() {
+  liveState.alerts = [];
+  renderLive();
+}
+
+async function pollLive() {
+  const results = await Promise.all(liveState.fixtures.map(async f => {
+    try {
+      const res = await fetch(`/api/fixture-stats?fixtureId=${f.id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'poll failed');
+      return { id: f.id, data };
+    } catch (err) {
+      console.error(`Poll failed for fixture ${f.id}:`, err.message);
+      return null; // skip this fixture this round, keep prior state
+    }
+  }));
+
+  liveState.fixtures = liveState.fixtures.map(f => {
+    const result = results.find(r => r && r.id === f.id);
+    if (!result) return f;
+    const { minute, home, away } = result.data;
+    const nextMinute = minute ?? f.minute;
+    return {
+      ...f,
+      minute: nextMinute,
+      home: applyStatsUpdate(f.home, nextMinute, home),
+      away: applyStatsUpdate(f.away, nextMinute, away),
+    };
+  });
+
+  liveState.fixtures.forEach(f => {
+    const homeIsLosing = f.home.goals < f.away.goals;
+    const awayIsLosing = f.away.goals < f.home.goals;
+    const homeScores = computePressureScores(f.minute, f.home.history, homeIsLosing, f.home.goals - f.away.goals);
+    const awayScores = computePressureScores(f.minute, f.away.history, awayIsLosing, f.away.goals - f.home.goals);
+    [['home', f.home, homeScores], ['away', f.away, awayScores]].forEach(([side, team, sc]) => {
+      const goalKey = `${f.id}-${side}-goal-${f.minute}`;
+      const cornerKey = `${f.id}-${side}-corner-${f.minute}`;
+      if (sc.goalScore >= GOAL_ALERT_THRESHOLD && !liveState.seenAlerts.has(goalKey)) {
+        liveState.seenAlerts.add(goalKey);
+        liveState.alerts.unshift({ kind: 'goal', team: team.name, minute: f.minute, value: sc.goalScore });
+      }
+      if (sc.cornerScore >= CORNER_ALERT_THRESHOLD && !liveState.seenAlerts.has(cornerKey)) {
+        liveState.seenAlerts.add(cornerKey);
+        liveState.alerts.unshift({ kind: 'corner', team: team.name, minute: f.minute, value: sc.cornerScore });
+      }
+    });
+  });
+  liveState.alerts = liveState.alerts.slice(0, 30);
+  renderLive();
+}
+
+function barColor(value, kind) {
+  if (kind === 'goal') return value >= GOAL_ALERT_THRESHOLD ? '#ff5a3c' : '#6fd67a';
+  return value >= CORNER_ALERT_THRESHOLD ? '#ffb02e' : '#4fb3d9';
+}
+
+function renderTeamCard(team, scores) {
+  const alertGoal = scores.goalScore >= GOAL_ALERT_THRESHOLD;
+  const alertCorner = scores.cornerScore >= CORNER_ALERT_THRESHOLD;
+  const gColor = barColor(scores.goalScore, 'goal');
+  const cColor = barColor(scores.cornerScore, 'corner');
+  return `
+    <div class="team-card ${alertGoal ? 'alert-goal' : ''}">
+      <div class="team-header">
+        <div class="team-name oswald">${team.name}</div>
+        <div class="team-goals mono">${team.goals}</div>
+      </div>
+      <div class="stat-row"><span>SOT ${team.shotsOnTarget}</span><span>COR ${team.corners}</span><span>POS ${team.possession}%</span></div>
+      <div class="bar-label"><span>GOAL PRESSURE</span><span style="color:${gColor};font-weight:700;">${scores.goalScore}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${scores.goalScore}%;background:${gColor};${scores.goalScore>55?`box-shadow:0 0 8px ${gColor};`:''}"></div></div>
+      <div class="bar-label"><span>CORNER PRESSURE</span><span style="color:${cColor};font-weight:700;">${scores.cornerScore}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${scores.cornerScore}%;background:${cColor};${scores.cornerScore>55?`box-shadow:0 0 8px ${cColor};`:''}"></div></div>
+      ${(alertGoal || alertCorner) ? `<div class="badges">
+        ${alertGoal ? '<span class="badge badge-goal">⚡ GOAL LIKELY</span>' : ''}
+        ${alertCorner ? '<span class="badge badge-corner">⚑ CORNER BUILDING</span>' : ''}
+      </div>` : ''}
+    </div>`;
+}
+
+function renderLive() {
+  const el = document.getElementById('panelLive');
+
+  if (liveState.phase === 'select') {
+    if (poolLoading) {
+      el.innerHTML = `<div class="card" style="text-align:center;color:#5f6779;font-family:ui-monospace,monospace;font-size:12px;padding:30px 0;">loading live fixtures…</div>`;
+      return;
+    }
+    if (poolError) {
+      el.innerHTML = `
+        <div class="card" style="text-align:center;padding:24px 16px;">
+          <div style="color:#ff5a3c;font-family:ui-monospace,monospace;font-size:12px;margin-bottom:10px;">${poolError}</div>
+          <button class="run-btn oswald" onclick="fetchFixturePool()">↻ RETRY</button>
+        </div>`;
+      return;
+    }
+    if (!FIXTURE_POOL.length) {
+      el.innerHTML = `
+        <div class="card" style="text-align:center;padding:24px 16px;">
+          <div style="color:#5f6779;font-family:ui-monospace,monospace;font-size:12px;margin-bottom:10px;">no live matches right now</div>
+          <button class="run-btn oswald" onclick="fetchFixturePool()">↻ REFRESH</button>
+        </div>`;
+      return;
+    }
+
+    const rows = FIXTURE_POOL.map(f => {
+      const checked = liveState.selectedIds.includes(f.id);
+      const disabled = !checked && liveState.selectedIds.length >= MAX_MATCHES;
+      return `
+        <button class="fixture-row ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}"
+          onclick="${disabled ? '' : `toggleSelect(${f.id})`}">
+          <div>
+            <div class="fixture-name">${f.home} vs ${f.away}</div>
+            <div class="fixture-meta">${f.competition} · ${f.minute != null ? f.minute + "'" : 'LIVE'}</div>
+          </div>
+          <div class="checkbox ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</div>
+        </button>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div class="oswald" style="font-size:14px;">SELECT MATCHES TO MONITOR</div>
+        <div class="mono" style="font-size:12px;color:${liveState.selectedIds.length >= MAX_MATCHES ? '#ff5a3c' : '#6fd67a'};">
+          ${liveState.selectedIds.length}/${MAX_MATCHES}
+        </div>
+      </div>
+      <div>${rows}</div>
+      <button class="start-btn ${liveState.selectedIds.length ? 'enabled' : ''} oswald"
+        onclick="${liveState.selectedIds.length ? 'startMonitoring()' : ''}">
+        START MONITORING ${liveState.selectedIds.length ? `(${liveState.selectedIds.length})` : ''}
+      </button>`;
+    return;
+  }
+
+  // live dashboard
+  const fixturesHtml = liveState.fixtures.map(f => {
+    const homeIsLosing = f.home.goals < f.away.goals;
+    const awayIsLosing = f.away.goals < f.home.goals;
+    const homeScores = computePressureScores(f.minute, f.home.history, homeIsLosing, f.home.goals - f.away.goals);
+    const awayScores = computePressureScores(f.minute, f.away.history, awayIsLosing, f.away.goals - f.home.goals);
+    return `
+      <div class="card fixture-card">
+        <div class="fixture-top">
+          <div><span class="live-dot"></span><span class="live-label">LIVE · ${f.minute}'</span></div>
+          <span class="comp-label">${f.competition}</span>
+        </div>
+        <div class="teams-row">
+          ${renderTeamCard(f.home, homeScores)}
+          ${renderTeamCard(f.away, awayScores)}
+        </div>
+      </div>`;
+  }).join('');
+
+  const alertsHtml = liveState.alerts.length === 0
+    ? '<div class="alert-empty">watching for pressure spikes...</div>'
+    : liveState.alerts.map(a => `
+      <div class="alert-item ${a.kind}">
+        <div class="alert-item-top" style="color:${a.kind === 'goal' ? '#ff5a3c' : '#ffb02e'};">
+          <span>${a.kind === 'goal' ? '⚡ GOAL' : '⚑ CORNER'}</span><span>${a.minute}'</span>
+        </div>
+        <div style="color:#c8ced9;">${a.team} — score ${a.value}</div>
+      </div>`).join('');
+
+  el.innerHTML = `
+    <button class="back-btn" onclick="backToSelect()">← change matches</button>
+    ${fixturesHtml}
+    <div class="card alert-feed">
+      <div class="alert-feed-header">
+        <div style="display:flex;align-items:center;gap:8px;"><span>🔔</span><span class="alert-feed-title oswald">ALERT FEED</span></div>
+        ${liveState.alerts.length ? '<button class="clear-btn" onclick="clearAlerts()">clear</button>' : ''}
+      </div>
+      <div class="alert-list">${alertsHtml}</div>
+    </div>
+    <div class="footer-note">thresholds: goal ≥ ${GOAL_ALERT_THRESHOLD} · corner ≥ ${CORNER_ALERT_THRESHOLD}</div>`;
+}
+
+// ============================================================================
+// BACKTEST LAB
+// ============================================================================
+function generateOneTeamLog(seed, biasGoals) {
+  const rand = mulberry32(seed);
+  let s = { shotsOnTarget: 0, dangerousAttacks: 0, corners: 0, possession: 50, goals: 0 };
+  const log = [{ minute: 0, ...s, events: [] }];
+  for (let m = 1; m <= 90; m++) {
+    const events = [];
+    const dA = Math.floor(rand() * 4);
+    let sot = 0, cor = 0, g = 0;
+    if (rand() < 0.20) { sot = 1; events.push('shotOnTarget'); }
+    if (rand() < 0.15) { cor = 1; events.push('corner'); }
+    if (sot && rand() < (0.10 + biasGoals)) { g = 1; events.push('goal'); }
+    s = {
+      shotsOnTarget: s.shotsOnTarget + sot, dangerousAttacks: s.dangerousAttacks + dA, corners: s.corners + cor,
+      possession: Math.max(30, Math.min(70, s.possession + Math.round((rand() - 0.5) * 6))), goals: s.goals + g,
+    };
+    log.push({ minute: m, ...s, events });
+  }
+  return log;
+}
+
+function generateSyntheticMatches(n, seedBase) {
+  const matches = [];
+  for (let i = 0; i < n; i++) {
+    matches.push({
+      id: i,
+      home: { name: `Home ${i}`, log: generateOneTeamLog(seedBase + i * 7, 0.01) },
+      away: { name: `Away ${i}`, log: generateOneTeamLog(seedBase + i * 13 + 500, 0.0) }
+    });
+  }
+  return matches;
+}
+
+function findAlertsBT(log, threshold, kind, cooldown) {
+  const alerts = [];
+  let lastAlertMinute = -999;
+  for (let m = 5; m <= 90; m++) {
+    const { goalScore, cornerScore } = computePressureScores(m, log, false, 0);
+    const score = kind === 'goal' ? goalScore : cornerScore;
+    if (score >= threshold && (m - lastAlertMinute) >= cooldown) {
+      alerts.push({ minute: m, score });
+      lastAlertMinute = m;
+    }
+  }
+  return alerts;
+}
+
+function actualEventMinutes(log, kind) {
+  const evName = kind === 'goal' ? 'goal' : 'corner';
+  return log.filter(h => h.events && h.events.includes(evName)).map(h => h.minute);
+}
+
+function backtestAtThreshold(matches, kind, threshold, window, cooldown) {
+  let totalAlerts = 0, hitAlerts = 0, totalEvents = 0, calledEvents = 0;
+  matches.forEach(match => {
+    [match.home, match.away].forEach(team => {
+      const alerts = findAlertsBT(team.log, threshold, kind, cooldown);
+      const events = actualEventMinutes(team.log, kind);
+      totalAlerts += alerts.length;
+      alerts.forEach(a => { if (events.some(em => em > a.minute && em <= a.minute + window)) hitAlerts++; });
+      totalEvents += events.length;j
+      events.forEach(em => { if (alerts.some(a => a.minute < em && em - a.minute <= window)) calledEvents++; });
+    });
+  });
+  return { threshold, totalAlerts, hitAlerts, precision: totalAlerts ? hitAlerts / totalAlerts : 0, recall: totalEvents ? calledEvents / totalEvents : 0, totalEvents };
+}
+
+function baselineRate(matches, kind, window) {
+  let windows = 0, hits = 0;
+  matches.forEach(match => {
+    [match.home, match.away].forEach(team => {
+      const events = actualEventMinutes(team.log, kind);
+      for (let m = 5; m <= 90 - window; m++) { windows++; if (events.some(em => em > m && em <= m + window)) hits++; }
+    });
+  });
+  return windows ? hits / windows : 0;
+}
+
+const THRESHOLDS_LIST = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85];
+let btResults = null;
+let btChosenThreshold = 65;
+
+function renderBacktestControls() {
+  return `
+    <div class="card">
+      <div class="controls-row">
+        <div>
+          <div class="control-label">SIGNAL</div>
+          <select id="btKind">
+            <option value="goal">Goal pressure</option>
+            <option value="corner">Corner pressure</option>
+          </select>
+        </div>
+        <div>
+          <div class="control-label">MATCHES</div>
+          <input type="number" id="btMatches" min="10" max="200" value="60" style="width:65px;">
+        </div>
+        <div>
+          <div class="control-label">WINDOW</div>
+          <input type="number" id="btWindow" min="5" max="30" value="15" style="width:55px;">
+        </div>
+        <div>
+          <div class="control-label">COOLDOWN</div>
+          <input type="number" id="btCooldown" min="2" max="20" value="8" style="width:55px;">
+        </div>
+        <button class="run-btn oswald" id="btRunBtn" onclick="runBacktest()">▶ RUN</button>
+      </div>
+    </div>
+    <div id="btResultsArea"></div>`;
+}
+
+function runBacktest() {
+  const btn = document.getElementById('btRunBtn');
+  btn.disabled = true; btn.textContent = 'RUNNING…';
+  setTimeout(() => {
+    const kind = document.getElementById('btKind').value;
+    const nMatches = +document.getElementById('btMatches').value;
+    const win = +document.getElementById('btWindow').value;
+    const cooldown = +document.getElementById('btCooldown').value;
+
+    const matches = generateSyntheticMatches(nMatches, 42);
+    const curve = THRESHOLDS_LIST.map(t => backtestAtThreshold(matches, kind, t, win, cooldown));
+    const base = baselineRate(matches, kind, win);
+    btResults = { curve, base, kind };
+    btChosenThreshold = 65;
+    renderBacktestResults();
+    btn.disabled = false; btn.innerHTML = '▶ RUN';
+  }, 30);
+}
+
+function setBtThreshold(val) {
+  btChosenThreshold = +val;
+  renderBacktestResults();
+}
+
+function drawChart(canvas, curve, chosenThreshold) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.clientWidth * 2;
+  const h = canvas.height = 220 * 2;
+  ctx.scale(1, 1);
+  ctx.clearRect(0, 0, w, h);
+
+  const padL = 40, padR = 20, padT = 15, padB = 30;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const xs = curve.map(c => c.threshold);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+
+  // grid + axes
+  ctx.strokeStyle = '#1c212c';
+  ctx.lineWidth = 2;
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (plotH * i) / 4;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+  }
+  ctx.fillStyle = '#5f6779';
+  ctx.font = '20px ui-monospace, monospace';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const val = 100 - i * 25;
+    const y = padT + (plotH * i) / 4;
+    ctx.fillText(val, padL - 8, y + 6);
+  }
+  ctx.textAlign = 'center';
+  xs.forEach(t => {
+    const x = padL + ((t - minX) / (maxX - minX)) * plotW;
+    ctx.fillText(t, x, h - padB + 20);
+  });
+
+  // reference line for chosen threshold
+  const chosenX = padL + ((chosenThreshold - minX) / (maxX - minX)) * plotW;
+  ctx.strokeStyle = '#5f6779';
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.moveTo(chosenX, padT); ctx.lineTo(chosenX, h - padB); ctx.stroke();
+  ctx.setLineDash([]);
+
+  function plotLine(key, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.beginPath();
+    curve.forEach((c, i) => {
+      const x = padL + ((c.threshold - minX) / (maxX - minX)) * plotW;
+      const val = key === 'precision' ? c.precision * 100 : c.recall * 100;
+      const y = padT + plotH - (val / 100) * plotH;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    curve.forEach(c => {
+      const x = padL + ((c.threshold - minX) / (maxX - minX)) * plotW;
+      const val = key === 'precision' ? c.precision * 100 : c.recall * 100;
+      const y = padT + plotH - (val / 100) * plotH;
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+  plotLine('precision', '#6fd67a');
+  plotLine('recall', '#4fb3d9');
+}
+
+function renderBacktestResults() {
+  const area = document.getElementById('btResultsArea');
+  if (!btResults) { area.innerHTML = ''; return; }
+  const selected = btResults.curve.find(r => r.threshold === btChosenThreshold);
+  const lift = selected ? (selected.precision - btResults.base) * 100 : null;
+
+  area.innerHTML = `
+    <div class="stack" style="margin-top:16px;">
+      <div class="card">
+        <div class="chart-title">PRECISION vs RECALL — ${btResults.kind.toUpperCase()}</div>
+        <canvas id="btCanvas" style="width:100%;height:220px;display:block;"></canvas>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#6fd67a;"></span>Precision %</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#4fb3d9;"></span>Recall %</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="control-label" style="margin-bottom:8px;">INSPECT THRESHOLD: ${btChosenThreshold}</div>
+        <input type="range" min="35" max="85" step="5" value="${btChosenThreshold}" oninput="setBtThreshold(this.value)">
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-card-label">ALERTS FIRED</div><div class="stat-card-value">${selected ? selected.totalAlerts : 0}</div></div>
+          <div class="stat-card"><div class="stat-card-label">PRECISION</div><div class="stat-card-value" style="color:#6fd67a;">${selected ? (selected.precision * 100).toFixed(0) : '—'}%</div></div>
+          <div class="stat-card"><div class="stat-card-label">RECALL</div><div class="stat-card-value" style="color:#4fb3d9;">${selected ? (selected.recall * 100).toFixed(0) : '—'}%</div></div>
+          <div class="stat-card"><div class="stat-card-label">LIFT</div><div class="stat-card-value" style="color:${lift > 0 ? '#6fd67a' : '#ff5a3c'};">${lift !== null ? (lift >= 0 ? '+' : '') + lift.toFixed(0) + 'pp' : '—'}</div></div>
+        </div>
+      </div>
+      <div class="info-box">
+        <span>ℹ️</span>
+        <div>Pick the threshold where precision clears baseline (${(btResults.base*100).toFixed(0)}%) by a meaningful margin, not just the highest precision — a threshold with 2 total alerts isn't a usable signal.</div>
+      </div>
+    </div>`;
+
+  requestAnimationFrame(() => {
+    const canvas = document.getElementById('btCanvas');
+    if (canvas) drawChart(canvas, btResults.curve, btChosenThreshold);
+  });
+}
+
+function renderBacktestPanel() {
+  document.getElementById('panelBacktest').innerHTML = renderBacktestControls();
+}
+
+// ============================================================================
+// INIT
+// ============================================================================
+fetchFixturePool();
+renderBacktestPanel();
+</script>
+</body>
+</html>
